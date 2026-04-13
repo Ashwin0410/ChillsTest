@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+venv/
+*.db
+*.sqlite3
+.env
+*.wav
+*.mp3
+!app/assets/*.mp3
+/tmp/
+.DS_Store
+Thumbs.db

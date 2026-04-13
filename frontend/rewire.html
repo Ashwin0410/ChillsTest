@@ -1,0 +1,1341 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <title>ReWire</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&amp;family=Playfair+Display:ital,wght@0,400;0,600;1,400&amp;display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body,
+      #root {
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+      }
+      body {
+        background: #ffffff;
+        font-family: "Outfit", sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+      }
+      textarea::placeholder {
+        color: rgba(0, 0, 0, 0.25);
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="text/babel">
+      const { useState, useEffect, useRef, useCallback } = React;
+      const API_BASE =
+        window.location.hostname === "localhost" ? "http://localhost:8000" : "";
+      const D = {
+        bg: "#FFFFFF",
+        text: "#1D1D1F",
+        sub: "#868688",
+        hint: "#AEAEB2",
+        accent: "#1D1D1F",
+        accentSoft: "rgba(0,0,0,0.04)",
+        accentGlow: "rgba(0,0,0,0.08)",
+        warm: "#B68B68",
+      };
+
+      function FadeIn({ children, delay = 0, style = {} }) {
+        const [v, setV] = useState(false);
+        useEffect(() => {
+          const t = setTimeout(() => setV(true), delay);
+          return () => clearTimeout(t);
+        }, [delay]);
+        return (
+          <div
+            style={{
+              opacity: v ? 1 : 0,
+              transform: v ? "none" : "translateY(14px)",
+              transition: "opacity .5s, transform .5s",
+              ...style,
+            }}
+          >
+            {children}
+          </div>
+        );
+      }
+
+      function Btn({ children, onClick, disabled, green, style = {} }) {
+        return (
+          <button
+            onClick={onClick}
+            disabled={disabled}
+            style={{
+              width: "100%",
+              padding: "16px 24px",
+              background: disabled
+                ? "rgba(0,0,0,0.04)"
+                : green
+                  ? D.accent
+                  : "rgba(0,0,0,0.06)",
+              color: disabled ? "rgba(0,0,0,0.3)" : green ? "#fff" : D.text,
+              border: "none",
+              borderRadius: 980,
+              fontSize: 15,
+              fontFamily: "inherit",
+              cursor: "pointer",
+              transition: "all .2s",
+              ...style,
+            }}
+          >
+            {children}
+          </button>
+        );
+      }
+
+      function ProgressDots({ steps, current }) {
+        return (
+          <div
+            style={{
+              display: "flex",
+              gap: 6,
+              justifyContent: "center",
+              padding: "20px 0",
+            }}
+          >
+            {Array.from({ length: steps }).map((_, i) => (
+              <div
+                key={i}
+                style={{
+                  width: i === current ? 24 : 6,
+                  height: 6,
+                  borderRadius: 3,
+                  background: i === current ? D.accent : "rgba(0,0,0,0.08)",
+                  transition: "all .3s",
+                }}
+              />
+            ))}
+          </div>
+        );
+      }
+
+      function useKeyboardInset() {
+        const [inset, setInset] = useState(0);
+        const baseRef = useRef(0);
+        useEffect(() => {
+          const vv = window.visualViewport;
+          const update = () => {
+            const visibleBottom = vv
+              ? vv.height + vv.offsetTop
+              : window.innerHeight;
+            baseRef.current = Math.max(
+              baseRef.current,
+              window.innerHeight,
+              visibleBottom,
+            );
+            const overlap = Math.max(0, baseRef.current - visibleBottom);
+            setInset(overlap > 80 ? overlap : 0);
+          };
+          const reset = () => {
+            baseRef.current = 0;
+            setTimeout(update, 60);
+          };
+          update();
+          window.addEventListener("resize", update);
+          window.addEventListener("orientationchange", reset);
+          if (vv) {
+            vv.addEventListener("resize", update);
+            vv.addEventListener("scroll", update);
+          }
+          return () => {
+            window.removeEventListener("resize", update);
+            window.removeEventListener("orientationchange", reset);
+            if (vv) {
+              vv.removeEventListener("resize", update);
+              vv.removeEventListener("scroll", update);
+            }
+          };
+        }, []);
+        return inset;
+      }
+
+      function BottomDock({ children, inset = 0, style = {} }) {
+        const lift = inset > 0 ? inset + 12 : 0;
+        return (
+          <div
+            style={{
+              position: "fixed",
+              left: 0,
+              right: 0,
+              bottom: lift,
+              padding: "0 18px calc(12px + env(safe-area-inset-bottom, 0px))",
+              zIndex: 40,
+              pointerEvents: "none",
+              ...style,
+            }}
+          >
+            <div
+              style={{
+                pointerEvents: "auto",
+                paddingTop: 18,
+                background:
+                  "linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 25%)",
+                ...style,
+              }}
+            >
+              {children}
+            </div>
+          </div>
+        );
+      }
+
+      // ——— Questions ———
+      const CQ = [
+        {
+          id: "wound",
+          q: "What does the voice in your head say when you're at your lowest?",
+          ph: 'e.g. "you\'re faking it" or "nobody would notice if you disappeared" or "you had so much potential and you wasted it"',
+          icon: "\u{1F5A4}",
+        },
+        {
+          id: "lastChills",
+          q: "When was the last time you got chills or goosebumps?",
+          ph: 'e.g. "a stranger being kind to someone for no reason" or "hearing my grandmother\'s voice in an old video" or "a line in a song I\'ve heard a hundred times but it finally landed"',
+          icon: "\u{2728}",
+        },
+        {
+          id: "hiddenTruth",
+          q: "What's something true about you that nobody sees?",
+          ph: 'e.g. "I rehearse conversations in my head because I\'m terrified of saying the wrong thing" or "I haven\'t enjoyed anything in months but I keep pretending"',
+          icon: "\u{1F30A}",
+        },
+      ];
+
+      function ChillsQuestions({ onNext }) {
+        const keyboardInset = useKeyboardInset();
+        const [qi, setQi] = useState(0);
+        const [ans, setAns] = useState({});
+        const c = CQ[qi];
+        const v = ans[c.id] || "";
+        return (
+          <div
+            style={{
+              minHeight: "100%",
+              display: "flex",
+              flexDirection: "column",
+              padding: "60px 28px 188px",
+            }}
+          >
+            <ProgressDots steps={3} current={qi} />
+            <FadeIn
+              key={qi}
+              delay={100}
+              style={{ flex: 1, display: "flex", flexDirection: "column" }}
+            >
+              <h2
+                style={{
+                  fontSize: 22,
+                  fontWeight: 300,
+                  lineHeight: 1.5,
+                  color: D.text,
+                  marginBottom: 24,
+                }}
+              >
+                {c.q}
+              </h2>
+              <textarea
+                value={v}
+                onChange={(e) => setAns({ ...ans, [c.id]: e.target.value })}
+                placeholder={c.ph}
+                rows={5}
+                style={{
+                  width: "100%",
+                  padding: "18px",
+                  background: "rgba(0,0,0,0.02)",
+                  border: "1px solid rgba(0,0,0,0.06)",
+                  borderRadius: 16,
+                  color: D.text,
+                  fontSize: 15,
+                  fontFamily: "inherit",
+                  resize: "none",
+                  outline: "none",
+                  lineHeight: 1.6,
+                }}
+              />
+              <BottomDock
+                inset={keyboardInset}
+                style={{ flexDirection: "column", gap: 10 }}
+              >
+                <Btn
+                  green
+                  onClick={() => {
+                    if (qi < CQ.length - 1) setQi(qi + 1);
+                    else onNext(ans);
+                  }}
+                  disabled={!v.trim()}
+                >
+                  {qi < CQ.length - 1 ? "Next" : "I'm ready"}
+                </Btn>
+                {qi > 0 && (
+                  <button
+                    onClick={() => setQi(qi - 1)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: D.sub,
+                      fontSize: 13,
+                      fontFamily: "inherit",
+                      cursor: "pointer",
+                      padding: 8,
+                    }}
+                  >
+                    &larr; Previous
+                  </button>
+                )}
+              </BottomDock>
+            </FadeIn>
+          </div>
+        );
+      }
+
+      // ——— Generating + Demographics ———
+      function Generating({ answers, onReady }) {
+        const keyboardInset = useKeyboardInset();
+        const [sessionId, setSessionId] = useState(null);
+        const [audioUrl, setAudioUrl] = useState(null);
+        const [generating, setGenerating] = useState(true);
+        const [error, setError] = useState(null);
+        const [age, setAge] = useState("");
+        const [gender, setGender] = useState("");
+        const [ethnicity, setEthnicity] = useState("");
+        const [elapsed, setElapsed] = useState(0);
+
+        useEffect(() => {
+          const start = Date.now();
+          const timer = setInterval(
+            () => setElapsed(Math.floor((Date.now() - start) / 1000)),
+            1000,
+          );
+          fetch(API_BASE + "/api/demo/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              q1_wound: answers.wound || "",
+              q2_chills_trigger: answers.lastChills || "",
+              q3_hidden_truth: answers.hiddenTruth || "",
+            }),
+          })
+            .then((r) => {
+              if (!r.ok) throw new Error("Generation failed");
+              return r.json();
+            })
+            .then((data) => {
+              setSessionId(data.session_id);
+              setAudioUrl(data.audio_url);
+              setGenerating(false);
+              clearInterval(timer);
+            })
+            .catch((err) => {
+              setError(err.message);
+              setGenerating(false);
+              clearInterval(timer);
+            });
+          return () => clearInterval(timer);
+        }, []);
+
+        const saveDemographics = () => {
+          if (!sessionId) return;
+          fetch(API_BASE + "/api/demo/demographics", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              session_id: sessionId,
+              age,
+              gender,
+              ethnicity,
+            }),
+          }).catch(() => {});
+        };
+        const canProceed = !generating && audioUrl && !error;
+        const ss = {
+          width: "100%",
+          padding: "14px 16px",
+          background: "rgba(0,0,0,0.03)",
+          border: "1px solid rgba(0,0,0,0.1)",
+          borderRadius: 12,
+          fontSize: 15,
+          fontFamily: "inherit",
+          color: D.text,
+          outline: "none",
+          appearance: "none",
+          cursor: "pointer",
+        };
+
+        return (
+          <div
+            style={{
+              minHeight: "100%",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "60px 36px 40px",
+              textAlign: "center",
+            }}
+          >
+            {generating && (
+              <>
+                <FadeIn delay={200}>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 500,
+                      letterSpacing: ".12em",
+                      textTransform: "uppercase",
+                      color: D.hint,
+                      marginBottom: 40,
+                    }}
+                  >
+                    Creating your experience
+                  </div>
+                </FadeIn>
+                <FadeIn delay={600}>
+                  <div
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: "50%",
+                      border: "2px solid " + D.accent,
+                      borderTopColor: "transparent",
+                      animation: "spin 1s linear infinite",
+                      margin: "0 auto 32px",
+                    }}
+                  />
+                  <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+                </FadeIn>
+                <FadeIn delay={800}>
+                  <p style={{ fontSize: 14, color: D.sub, marginBottom: 8 }}>
+                    {elapsed}s elapsed
+                  </p>
+                </FadeIn>
+                <FadeIn delay={1000}>
+                  <p
+                    style={{
+                      fontSize: 13,
+                      color: D.hint,
+                      maxWidth: 280,
+                      margin: "0 auto 40px",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    This usually takes 60-90 seconds. While you wait, a few
+                    quick questions:
+                  </p>
+                </FadeIn>
+              </>
+            )}
+            {!generating && !error && (
+              <>
+                <FadeIn delay={0}>
+                  <div
+                    style={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: "50%",
+                      background:
+                        "linear-gradient(145deg," +
+                        D.accent +
+                        "30," +
+                        D.warm +
+                        "20)",
+                      border: "1px solid " + D.accentGlow,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      margin: "0 auto 24px",
+                      fontSize: 28,
+                    }}
+                  >
+                    &#10003;
+                  </div>
+                </FadeIn>
+                <FadeIn delay={300}>
+                  <h2
+                    style={{
+                      fontSize: 22,
+                      fontWeight: 300,
+                      color: D.text,
+                      marginBottom: 12,
+                    }}
+                  >
+                    Your experience is ready
+                  </h2>
+                </FadeIn>
+              </>
+            )}
+            {error && (
+              <>
+                <FadeIn delay={0}>
+                  <p style={{ fontSize: 16, color: "#c00", marginBottom: 20 }}>
+                    Something went wrong: {error}
+                  </p>
+                </FadeIn>
+                <FadeIn delay={200}>
+                  <Btn onClick={() => window.location.reload()}>Try again</Btn>
+                </FadeIn>
+              </>
+            )}
+            {!error && (
+              <FadeIn
+                delay={1400}
+                style={{
+                  width: "100%",
+                  maxWidth: 320,
+                  marginTop: generating ? 0 : 32,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 16,
+                    textAlign: "left",
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: D.sub,
+                        marginBottom: 6,
+                        letterSpacing: ".05em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Age range
+                    </div>
+                    <select
+                      value={age}
+                      onChange={(e) => setAge(e.target.value)}
+                      style={ss}
+                    >
+                      <option value="">Select</option>
+                      <option value="18-24">18-24</option>
+                      <option value="25-34">25-34</option>
+                      <option value="35-44">35-44</option>
+                      <option value="45-54">45-54</option>
+                      <option value="55-64">55-64</option>
+                      <option value="65+">65+</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: D.sub,
+                        marginBottom: 6,
+                        letterSpacing: ".05em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Gender
+                    </div>
+                    <select
+                      value={gender}
+                      onChange={(e) => setGender(e.target.value)}
+                      style={ss}
+                    >
+                      <option value="">Select</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="non-binary">Non-binary</option>
+                      <option value="prefer-not">Prefer not to say</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: D.sub,
+                        marginBottom: 6,
+                        letterSpacing: ".05em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Ethnicity
+                    </div>
+                    <select
+                      value={ethnicity}
+                      onChange={(e) => setEthnicity(e.target.value)}
+                      style={ss}
+                    >
+                      <option value="">Select</option>
+                      <option value="white">White</option>
+                      <option value="black">Black / African American</option>
+                      <option value="hispanic">Hispanic / Latino</option>
+                      <option value="asian">Asian</option>
+                      <option value="mixed">Mixed / Multiple</option>
+                      <option value="other">Other</option>
+                      <option value="prefer-not">Prefer not to say</option>
+                    </select>
+                  </div>
+                </div>
+              </FadeIn>
+            )}
+            {canProceed && (
+              <BottomDock inset={keyboardInset}>
+                <Btn
+                  green
+                  onClick={() => {
+                    saveDemographics();
+                    onReady({ sessionId, audioUrl });
+                  }}
+                >
+                  Continue
+                </Btn>
+              </BottomDock>
+            )}
+          </div>
+        );
+      }
+
+      // ——— Pre-Chills ———
+      function PreChills({ onNext }) {
+        return (
+          <div
+            style={{
+              minHeight: "100%",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "60px 36px 40px",
+              textAlign: "center",
+            }}
+          >
+            <FadeIn delay={400}>
+              <h2
+                style={{
+                  fontSize: 28,
+                  fontWeight: 600,
+                  lineHeight: 1.35,
+                  color: D.text,
+                  marginBottom: 20,
+                  letterSpacing: "-.02em",
+                }}
+              >
+                Your first session
+              </h2>
+            </FadeIn>
+            <FadeIn delay={800}>
+              <p
+                style={{
+                  fontSize: 16,
+                  fontWeight: 400,
+                  lineHeight: 1.7,
+                  color: D.sub,
+                  maxWidth: 300,
+                  margin: "0 auto 12px",
+                }}
+              >
+                We made something just for you. Put on headphones and make
+                yourself comfortable.
+              </p>
+            </FadeIn>
+            <FadeIn delay={1200}>
+              <p
+                style={{
+                  fontSize: 16,
+                  fontWeight: 400,
+                  lineHeight: 1.7,
+                  color: D.sub,
+                  maxWidth: 300,
+                  margin: "0 auto 44px",
+                }}
+              >
+                When you feel a chill &ndash; a shiver, goosebumps, a tingle
+                anywhere on your body &ndash;{" "}
+                <span style={{ color: D.text, fontWeight: 500 }}>
+                  tap the screen
+                </span>
+                .
+              </p>
+            </FadeIn>
+            <FadeIn delay={1600}>
+              <Btn green onClick={onNext}>
+                Start listening
+              </Btn>
+            </FadeIn>
+          </div>
+        );
+      }
+
+      // ——— CHILLS CANVAS ———
+      function ChillsExperience({ audioUrl, onDone }) {
+        const cvR = useRef();
+        const S = useRef({
+          cP: [],
+          touched: false,
+          spots: 0,
+        });
+        const [spots, setSpots] = useState(0);
+        const [hint, setHint] = useState(false);
+        const [hGone, setHGone] = useState(false);
+        const chillTimestamps = useRef([]);
+        const audioStartTime = useRef(0);
+
+        function rsz() {
+          const dp = window.devicePixelRatio || 1,
+            W = window.innerWidth,
+            H = window.innerHeight;
+          if (!cvR.current) return;
+          const c = cvR.current;
+          c.width = W * dp;
+          c.height = H * dp;
+          c.style.width = W + "px";
+          c.style.height = H + "px";
+          c.getContext("2d").setTransform(dp, 0, 0, dp, 0, 0);
+        }
+
+        // Render loop: black screen + chill particles only
+        useEffect(() => {
+          let on = true;
+          window.addEventListener("resize", rsz);
+          setTimeout(rsz, 200);
+          function loop() {
+            if (!on) return;
+            requestAnimationFrame(loop);
+            const s = S.current,
+              W = window.innerWidth,
+              H = window.innerHeight;
+            const ctx = cvR.current?.getContext("2d");
+            if (!ctx) return;
+
+            // Black background every frame
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, W, H);
+
+            // Chill particles render (tap only)
+            for (let i = s.cP.length - 1; i >= 0; i--) {
+              const p = s.cP[i];
+              p.t++;
+              p.life -= p.decay;
+              if (p.life <= 0) {
+                s.cP.splice(i, 1);
+                continue;
+              }
+              const drift = p.isCore ? 0.05 : 0.15 + p.life * 0.85;
+              p.x += p.vx * drift;
+              p.y += p.vy * drift;
+              const pulse = 0.65 + 0.35 * Math.sin(p.t * 0.008 + p.pp);
+              const a = p.life * pulse;
+              const sz = p.size * (1 + Math.random() * 0.3);
+              ctx.globalAlpha = a * 0.95;
+              ctx.fillStyle = `hsla(${p.h},40%,${p.l}%,${a})`;
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, sz, 0, Math.PI * 2);
+              ctx.fill();
+            }
+
+            if (s.cP.length > 3000) s.cP.splice(0, s.cP.length - 3000);
+          }
+          loop();
+          return () => {
+            on = false;
+            window.removeEventListener("resize", rsz);
+          };
+        }, []);
+
+        // Audio setup
+        useEffect(() => {
+          const au = new Audio();
+          au.crossOrigin = "anonymous";
+          au.src = audioUrl;
+          au.addEventListener(
+            "canplaythrough",
+            () => {
+              au.play();
+              audioStartTime.current = Date.now();
+              setTimeout(() => {
+                if (!S.current.touched) setHint(true);
+              }, 2000);
+            },
+            { once: true },
+          );
+          au.addEventListener("ended", () => {
+            setTimeout(
+              () =>
+                onDone({
+                  spots: S.current.spots,
+                  timestamps: chillTimestamps.current,
+                }),
+              1500,
+            );
+          });
+          au.addEventListener("error", () => {
+            console.error("[ReWire] Audio playback error");
+          });
+        }, []);
+
+        const tap = useCallback((e) => {
+          e.preventDefault();
+          const s = S.current;
+          const x = e.clientX || (e.touches && e.touches[0].clientX) || 0,
+            y = e.clientY || (e.touches && e.touches[0].clientY) || 0;
+          if (audioStartTime.current > 0) {
+            chillTimestamps.current.push(
+              parseFloat(
+                ((Date.now() - audioStartTime.current) / 1000).toFixed(2),
+              ),
+            );
+          }
+          const n = 40 + Math.floor(Math.random() * 20);
+          for (let i = 0; i < n; i++) {
+            const a = Math.random() * Math.PI * 2;
+            const isCore = i < 15;
+            const sp = isCore
+              ? 0.005 + Math.random() * 0.015
+              : 0.08 + Math.random() * 0.3;
+            s.cP.push({
+              x: x + (Math.random() - 0.5) * (isCore ? 8 : 0.45),
+              y: y + (Math.random() - 0.5) * (isCore ? 8 : 0.45),
+              life: 1,
+              decay: isCore
+                ? 0.00002 + Math.random() * 0.00004
+                : 0.00004 + Math.random() * 0.0001,
+              size: isCore
+                ? 3.5 + Math.random() * 2.5
+                : 2.5 + Math.random() * 3.5,
+              vx: Math.cos(a) * sp,
+              vy: Math.sin(a) * sp - (isCore ? 0.001 : 0.008),
+              l: isCore ? 65 + Math.random() * 15 : 55 + Math.random() * 15,
+              h: 200 + Math.random() * 20,
+              pp: Math.random() * Math.PI * 2,
+              t: 0,
+              isCore,
+            });
+          }
+          s.spots++;
+          setSpots(s.spots);
+          if (!s.touched) {
+            s.touched = true;
+            setHint(false);
+            setTimeout(() => setHGone(true), 1600);
+          }
+        }, []);
+
+        return (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100vw",
+              height: "100vh",
+              background: "#000",
+              zIndex: 50,
+            }}
+          >
+            <canvas
+              ref={cvR}
+              style={{ position: "absolute", inset: 0, zIndex: 1 }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                zIndex: 5,
+                cursor: "crosshair",
+              }}
+              onPointerDown={tap}
+            />
+            <div
+              style={{
+                position: "absolute",
+                top: 22,
+                left: 24,
+                right: 24,
+                zIndex: 60,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                pointerEvents: "none",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 300,
+                  letterSpacing: ".1em",
+                  color: "rgba(255,255,255,.7)",
+                }}
+              >
+                {spots > 0 ? `chills: ${spots}` : ""}
+              </span>
+            </div>
+            {!hGone && (
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 88,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  zIndex: 10,
+                  fontSize: 13,
+                  fontWeight: 300,
+                  color: "rgba(255,255,255,.3)",
+                  letterSpacing: ".02em",
+                  whiteSpace: "nowrap",
+                  transition: "opacity 1.5s",
+                  opacity: hint ? 1 : 0,
+                }}
+              >
+                tap when you feel something
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      // ——— Feedback ———
+      function Feedback({ spots, timestamps, sessionId }) {
+        const keyboardInset = useKeyboardInset();
+        const [feltChills, setFeltChills] = useState(null);
+        const [driver, setDriver] = useState("");
+        const [note, setNote] = useState("");
+        const [submitted, setSubmitted] = useState(false);
+
+        const submit = () => {
+          fetch(API_BASE + "/api/demo/feedback", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              session_id: sessionId,
+              felt_chills: feltChills,
+              chills_count: spots || 0,
+              chills_timestamps_json: JSON.stringify(timestamps || []),
+              experience_driver: driver,
+              feedback_note: note,
+            }),
+          })
+            .then(() => setSubmitted(true))
+            .catch(() => setSubmitted(true));
+        };
+
+        if (submitted) return <Done />;
+
+        return (
+          <div
+            style={{
+              minHeight: "100%",
+              display: "flex",
+              flexDirection: "column",
+              padding: "60px 28px 176px",
+            }}
+          >
+            <FadeIn delay={300}>
+              <h2
+                style={{
+                  fontSize: 22,
+                  fontWeight: 200,
+                  color: D.text,
+                  marginBottom: 6,
+                  textAlign: "center",
+                }}
+              >
+                {spots > 0
+                  ? `You felt ${spots} moment${spots === 1 ? "" : "s"}`
+                  : ""}
+              </h2>
+              <p
+                style={{
+                  fontSize: 14,
+                  color: D.sub,
+                  textAlign: "center",
+                  marginBottom: 32,
+                }}
+              >
+                Session complete
+              </p>
+            </FadeIn>
+            <FadeIn delay={600}>
+              <div
+                style={{
+                  padding: "18px 20px",
+                  borderRadius: 16,
+                  background: "rgba(0,0,0,0.02)",
+                  border: "1px solid rgba(0,0,0,0.06)",
+                  marginBottom: 24,
+                  textAlign: "left",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: D.accent,
+                    letterSpacing: ".1em",
+                    textTransform: "uppercase",
+                    marginBottom: 8,
+                  }}
+                >
+                  Did you experience chills?
+                </div>
+                <div style={{ display: "flex", gap: 12 }}>
+                  <button
+                    onClick={() => setFeltChills(true)}
+                    style={{
+                      flex: 1,
+                      padding: "12px",
+                      background:
+                        feltChills === true
+                          ? "rgba(0,0,0,0.08)"
+                          : "rgba(0,0,0,0.02)",
+                      border:
+                        feltChills === true
+                          ? "1px solid " + D.accent
+                          : "1px solid rgba(0,0,0,0.06)",
+                      borderRadius: 12,
+                      fontSize: 15,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    Yes
+                  </button>
+                  <button
+                    onClick={() => setFeltChills(false)}
+                    style={{
+                      flex: 1,
+                      padding: "12px",
+                      background:
+                        feltChills === false
+                          ? "rgba(0,0,0,0.08)"
+                          : "rgba(0,0,0,0.02)",
+                      border:
+                        feltChills === false
+                          ? "1px solid " + D.accent
+                          : "1px solid rgba(0,0,0,0.06)",
+                      borderRadius: 12,
+                      fontSize: 15,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    No
+                  </button>
+                </div>
+              </div>
+            </FadeIn>
+            <FadeIn delay={900}>
+              <div
+                style={{
+                  padding: "18px 20px",
+                  borderRadius: 16,
+                  background: "rgba(0,0,0,0.02)",
+                  border: "1px solid rgba(0,0,0,0.06)",
+                  marginBottom: 24,
+                  textAlign: "left",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: D.accent,
+                    letterSpacing: ".1em",
+                    textTransform: "uppercase",
+                    marginBottom: 8,
+                  }}
+                >
+                  What gave you chills?
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {["music", "voice", "speech text", "combination"].map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setDriver(d)}
+                      style={{
+                        padding: "10px 16px",
+                        background:
+                          driver === d
+                            ? "rgba(0,0,0,0.08)"
+                            : "rgba(0,0,0,0.02)",
+                        border:
+                          driver === d
+                            ? "1px solid " + D.accent
+                            : "1px solid rgba(0,0,0,0.06)",
+                        borderRadius: 20,
+                        fontSize: 13,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                        textTransform: "capitalize",
+                      }}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </FadeIn>
+            <FadeIn delay={1100}>
+              <div style={{ fontSize: 12, color: D.sub, marginBottom: 10 }}>
+                Any thoughts or feelings after that? (optional)
+              </div>
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="What came up for you..."
+                rows={4}
+                style={{
+                  width: "100%",
+                  padding: "16px 18px",
+                  background: "rgba(0,0,0,0.02)",
+                  border: "1px solid rgba(0,0,0,0.06)",
+                  borderRadius: 14,
+                  color: D.text,
+                  fontSize: 14,
+                  fontFamily: "inherit",
+                  resize: "none",
+                  outline: "none",
+                  lineHeight: 1.6,
+                }}
+              />
+            </FadeIn>
+            <FadeIn delay={1400}>
+              <BottomDock inset={keyboardInset}>
+                <Btn green onClick={submit}>
+                  Continue
+                </Btn>
+              </BottomDock>
+            </FadeIn>
+          </div>
+        );
+      }
+
+      // ——— Welcome ———
+      function Welcome({ onNext }) {
+        return (
+          <div
+            style={{
+              minHeight: "100%",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "60px 36px 40px",
+              textAlign: "center",
+            }}
+          >
+            <FadeIn delay={200}>
+              <div
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  letterSpacing: ".12em",
+                  textTransform: "uppercase",
+                  color: D.hint,
+                  marginBottom: 40,
+                }}
+              >
+                ReWire
+              </div>
+            </FadeIn>
+            <FadeIn delay={600}>
+              <h1
+                style={{
+                  fontSize: 32,
+                  fontWeight: 600,
+                  lineHeight: 1.25,
+                  color: D.text,
+                  marginBottom: 20,
+                  letterSpacing: "-.02em",
+                }}
+              >
+                Discover what
+                <br />
+                truly moves you.
+              </h1>
+            </FadeIn>
+            <FadeIn delay={1000}>
+              <p
+                style={{
+                  fontSize: 16,
+                  fontWeight: 400,
+                  lineHeight: 1.7,
+                  color: D.sub,
+                  maxWidth: 320,
+                  margin: "0 auto 36px",
+                }}
+              >
+                Chills &ndash; goosebumps, shivers, that feeling when something
+                hits you &ndash; reveal what matters most to you. ReWire uses
+                that to connect you back to yourself.
+              </p>
+            </FadeIn>
+            <FadeIn delay={1400}>
+              <Btn green onClick={onNext}>
+                Get started
+              </Btn>
+            </FadeIn>
+          </div>
+        );
+      }
+
+      // ——— Done ———
+      function Done() {
+        return (
+          <div
+            style={{
+              minHeight: "100%",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              textAlign: "center",
+              padding: 40,
+            }}
+          >
+            <FadeIn delay={300}>
+              <div
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: "50%",
+                  background:
+                    "linear-gradient(145deg," +
+                    D.accent +
+                    "30," +
+                    D.warm +
+                    "20)",
+                  border: "1px solid " + D.accentGlow,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 24px",
+                  fontSize: 28,
+                }}
+              >
+                &#10003;
+              </div>
+            </FadeIn>
+            <FadeIn delay={700}>
+              <h2
+                style={{
+                  fontSize: 28,
+                  fontWeight: 200,
+                  color: D.text,
+                  marginBottom: 12,
+                }}
+              >
+                Thank you
+              </h2>
+            </FadeIn>
+            <FadeIn delay={1100}>
+              <p
+                style={{
+                  fontSize: 15,
+                  fontWeight: 300,
+                  color: D.sub,
+                  lineHeight: 1.7,
+                  maxWidth: 280,
+                  margin: "0 auto 40px",
+                }}
+              >
+                Your response helps us understand what moves people. That
+                matters more than you know.
+              </p>
+            </FadeIn>
+            <FadeIn delay={1500}>
+              <Btn green onClick={() => window.location.reload()}>
+                Start over
+              </Btn>
+            </FadeIn>
+          </div>
+        );
+      }
+
+      // ——— App ———
+      function App() {
+        const [step, setStep] = useState(0);
+        const [answers, setAnswers] = useState({});
+        const [sessionData, setSessionData] = useState({
+          sessionId: null,
+          audioUrl: null,
+        });
+        const [chillsData, setChillsData] = useState({
+          spots: 0,
+          timestamps: [],
+        });
+
+        const phases = [
+          <Welcome key="w" onNext={() => setStep(1)} />,
+          <ChillsQuestions
+            key="cq"
+            onNext={(ans) => {
+              setAnswers(ans);
+              setStep(2);
+            }}
+          />,
+          <Generating
+            key="gen"
+            answers={answers}
+            onReady={(data) => {
+              setSessionData(data);
+              setStep(3);
+            }}
+          />,
+          <PreChills key="pc" onNext={() => setStep(4)} />,
+          <ChillsExperience
+            key="ce"
+            audioUrl={sessionData.audioUrl}
+            onDone={(data) => {
+              setChillsData(data);
+              setStep(5);
+            }}
+          />,
+          <Feedback
+            key="fb"
+            spots={chillsData.spots}
+            timestamps={chillsData.timestamps}
+            sessionId={sessionData.sessionId}
+          />,
+          <Done key="done" />,
+        ];
+
+        return (
+          <div
+            style={{
+              width: "100vw",
+              height: "100dvh",
+              minHeight: "100dvh",
+              background: D.bg,
+              color: D.text,
+              fontFamily: "'Outfit',sans-serif",
+              position: "relative",
+              overflow: "hidden",
+              overscrollBehavior: "none",
+            }}
+          >
+            {phases[step]}
+          </div>
+        );
+      }
+
+      ReactDOM.render(<App />, document.getElementById("root"));
+    </script>
+  </body>
+</html>

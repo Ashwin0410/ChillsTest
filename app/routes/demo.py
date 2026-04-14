@@ -25,7 +25,7 @@ from app.utils.audio import load_audio, duration_ms
 
 r = APIRouter(prefix="/api/demo", tags=["demo"])
 
-MUSIC_FADEIN_MS = 3000   # Music fades in over 3 seconds after voice starts
+MUSIC_FADEIN_MS = 5000   # Music fades in over 5 seconds (voice-only opening statements)
 TAIL_BUFFER_MS = 2000    # Music plays 2 seconds after voice ends
 
 
@@ -100,7 +100,8 @@ def generate(req: GenerateRequest, db: Session = Depends(get_db)):
     music_ms = duration_ms(load_audio(str(music_path)))
     # Voice fills most of the music duration, leaving tail buffer at the end
     spoken_target_ms = max(int(music_ms - TAIL_BUFFER_MS), int(0.75 * music_ms))
-    target_words = min(int((spoken_target_ms / 1000) * 1.7), 1200)
+    # ElevenLabs v3 at style=1.0 speaks at ~2.0 words per second
+    target_words = min(int((spoken_target_ms / 1000) * 2.0), 1200)
 
     print(f"[Demo] Music: {music_ms}ms, spoken target: {spoken_target_ms}ms, target words: {target_words}")
 

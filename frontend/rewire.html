@@ -677,9 +677,318 @@
             </FadeIn>
             <FadeIn delay={1600}>
               <Btn green onClick={onNext}>
-                Start listening
+                Continue
               </Btn>
             </FadeIn>
+          </div>
+        );
+      }
+
+      // ——— Box Breathing ———
+      function BoxBreathing({ onNext }) {
+        const PHASE_MS = 4000;
+        const TOTAL_CYCLES = 8;
+        const phases = ["Breathe In", "Hold", "Breathe Out", "Hold"];
+        const [phaseIndex, setPhaseIndex] = useState(0);
+        const [countdown, setCountdown] = useState(4);
+        const [cycle, setCycle] = useState(1);
+        const [done, setDone] = useState(false);
+        const [canSkip, setCanSkip] = useState(false);
+        const [progress, setProgress] = useState(0);
+
+        useEffect(() => {
+          const startTime = Date.now();
+          const totalMs = TOTAL_CYCLES * 4 * PHASE_MS;
+
+          const iv = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            const totalPhases = Math.floor(elapsed / PHASE_MS);
+            const currentCycle = Math.floor(totalPhases / 4) + 1;
+            const currentPhase = totalPhases % 4;
+            const phaseElapsed = elapsed % PHASE_MS;
+            const remaining = Math.ceil((PHASE_MS - phaseElapsed) / 1000);
+
+            if (currentCycle > TOTAL_CYCLES) {
+              setDone(true);
+              clearInterval(iv);
+              return;
+            }
+
+            setPhaseIndex(currentPhase);
+            setCountdown(Math.max(1, remaining));
+            setCycle(currentCycle);
+            setProgress(elapsed / totalMs);
+
+            if (currentCycle >= 3) setCanSkip(true);
+          }, 100);
+
+          return () => clearInterval(iv);
+        }, []);
+
+        if (done) {
+          return (
+            <div
+              style={{
+                minHeight: "100%",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "60px 36px 40px",
+                textAlign: "center",
+                background: "#000",
+              }}
+            >
+              <FadeIn delay={300}>
+                <p
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 300,
+                    color: "rgba(255,255,255,0.8)",
+                    marginBottom: 40,
+                    lineHeight: 1.6,
+                  }}
+                >
+                  You're ready.
+                </p>
+              </FadeIn>
+              <FadeIn delay={800}>
+                <Btn
+                  green
+                  onClick={onNext}
+                  style={{ maxWidth: 280, background: "#fff", color: "#000" }}
+                >
+                  Start listening
+                </Btn>
+              </FadeIn>
+            </div>
+          );
+        }
+
+        const currentPhase = phases[phaseIndex];
+        const isBreathIn = phaseIndex === 0;
+        const isBreathOut = phaseIndex === 2;
+        const isHold = phaseIndex === 1 || phaseIndex === 3;
+
+        const boxSize = 180;
+        const phaseProgress = 1 - (countdown - 1) / 3;
+
+        const dotX =
+          phaseIndex === 0
+            ? phaseProgress * boxSize
+            : phaseIndex === 1
+              ? boxSize
+              : phaseIndex === 2
+                ? boxSize - phaseProgress * boxSize
+                : 0;
+        const dotY =
+          phaseIndex === 0
+            ? 0
+            : phaseIndex === 1
+              ? phaseProgress * boxSize
+              : phaseIndex === 2
+                ? boxSize
+                : boxSize - phaseProgress * boxSize;
+
+        return (
+          <div
+            style={{
+              minHeight: "100%",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "60px 36px 40px",
+              textAlign: "center",
+              background: "#000",
+            }}
+          >
+            <FadeIn delay={200}>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 500,
+                  letterSpacing: ".15em",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.3)",
+                  marginBottom: 50,
+                }}
+              >
+                Settle in
+              </div>
+            </FadeIn>
+
+            <div
+              style={{
+                position: "relative",
+                width: boxSize + 80,
+                height: boxSize + 80,
+                marginBottom: 40,
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  fontSize: 48,
+                  fontWeight: 200,
+                  color: "rgba(255,255,255,0.9)",
+                }}
+              >
+                {countdown}
+              </div>
+
+              <div
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  width: boxSize,
+                  height: boxSize,
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  borderRadius: 4,
+                }}
+              />
+
+              <div
+                style={{
+                  position: "absolute",
+                  top: 40 + dotY - 6,
+                  left: 40 + dotX - 6,
+                  width: 12,
+                  height: 12,
+                  borderRadius: "50%",
+                  background: "rgba(255,255,255,0.9)",
+                  boxShadow: "0 0 20px rgba(255,255,255,0.4)",
+                  transition: "top 0.1s linear, left 0.1s linear",
+                }}
+              />
+
+              <div
+                style={{
+                  position: "absolute",
+                  top: 15,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  fontSize: 12,
+                  fontWeight: 400,
+                  letterSpacing: ".08em",
+                  color:
+                    phaseIndex === 0
+                      ? "rgba(255,255,255,0.9)"
+                      : "rgba(255,255,255,0.25)",
+                  transition: "color 0.3s",
+                }}
+              >
+                Breathe In
+              </div>
+              <div
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  fontSize: 12,
+                  fontWeight: 400,
+                  letterSpacing: ".08em",
+                  color:
+                    phaseIndex === 1
+                      ? "rgba(255,255,255,0.9)"
+                      : "rgba(255,255,255,0.25)",
+                  transition: "color 0.3s",
+                }}
+              >
+                Hold
+              </div>
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 15,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  fontSize: 12,
+                  fontWeight: 400,
+                  letterSpacing: ".08em",
+                  color:
+                    phaseIndex === 2
+                      ? "rgba(255,255,255,0.9)"
+                      : "rgba(255,255,255,0.25)",
+                  transition: "color 0.3s",
+                }}
+              >
+                Breathe Out
+              </div>
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  fontSize: 12,
+                  fontWeight: 400,
+                  letterSpacing: ".08em",
+                  color:
+                    phaseIndex === 3
+                      ? "rgba(255,255,255,0.9)"
+                      : "rgba(255,255,255,0.25)",
+                  transition: "color 0.3s",
+                }}
+              >
+                Hold
+              </div>
+            </div>
+
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 300,
+                color: "rgba(255,255,255,0.3)",
+                marginBottom: 30,
+              }}
+            >
+              {cycle} of {TOTAL_CYCLES}
+            </div>
+
+            <div
+              style={{
+                width: 200,
+                height: 2,
+                background: "rgba(255,255,255,0.08)",
+                borderRadius: 1,
+                overflow: "hidden",
+                marginBottom: 40,
+              }}
+            >
+              <div
+                style={{
+                  width: `${progress * 100}%`,
+                  height: "100%",
+                  background: "rgba(255,255,255,0.3)",
+                  transition: "width 0.1s linear",
+                }}
+              />
+            </div>
+
+            {canSkip && (
+              <button
+                onClick={onNext}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "rgba(255,255,255,0.25)",
+                  fontSize: 13,
+                  fontFamily: "inherit",
+                  cursor: "pointer",
+                  padding: 8,
+                  letterSpacing: ".03em",
+                }}
+              >
+                Skip
+              </button>
+            )}
           </div>
         );
       }
@@ -711,7 +1020,6 @@
           c.getContext("2d").setTransform(dp, 0, 0, dp, 0, 0);
         }
 
-        // Render loop: black screen + chill particles only
         useEffect(() => {
           let on = true;
           window.addEventListener("resize", rsz);
@@ -725,12 +1033,10 @@
             const ctx = cvR.current?.getContext("2d");
             if (!ctx) return;
 
-            // Black background every frame
             ctx.globalAlpha = 1;
             ctx.fillStyle = "#000";
             ctx.fillRect(0, 0, W, H);
 
-            // Chill particles render (tap only)
             for (let i = s.cP.length - 1; i >= 0; i--) {
               const p = s.cP[i];
               p.t++;
@@ -761,7 +1067,6 @@
           };
         }, []);
 
-        // Audio setup
         useEffect(() => {
           const au = new Audio();
           au.crossOrigin = "anonymous";
@@ -1299,12 +1604,13 @@
             }}
           />,
           <PreChills key="pc" onNext={() => setStep(4)} />,
+          <BoxBreathing key="bb" onNext={() => setStep(5)} />,
           <ChillsExperience
             key="ce"
             audioUrl={sessionData.audioUrl}
             onDone={(data) => {
               setChillsData(data);
-              setStep(5);
+              setStep(6);
             }}
           />,
           <Feedback

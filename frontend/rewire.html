@@ -309,7 +309,7 @@
       // ——— Box Breathing + Generation (combined) ———
       function BreathingAndGenerating({ answers, onReady }) {
         const PHASE_MS = 4000;
-        const TOTAL_CYCLES = 8;
+        const TOTAL_CYCLES = 15;
         const phases = ["Breathe In", "Hold", "Breathe Out", "Hold"];
         const [phaseIndex, setPhaseIndex] = useState(0);
         const [countdown, setCountdown] = useState(4);
@@ -407,22 +407,22 @@
           setBreathingDone(true);
         };
 
+        const ss = {
+          width: "100%",
+          padding: "14px 16px",
+          background: "rgba(0,0,0,0.03)",
+          border: "1px solid rgba(0,0,0,0.1)",
+          borderRadius: 12,
+          fontSize: 15,
+          fontFamily: "inherit",
+          color: D.text,
+          outline: "none",
+          appearance: "none",
+          cursor: "pointer",
+        };
+
         // ——— Post-breathing: demographics + waiting/ready ———
         if (breathingDone) {
-          const ss = {
-            width: "100%",
-            padding: "14px 16px",
-            background: "rgba(255,255,255,0.08)",
-            border: "1px solid rgba(255,255,255,0.15)",
-            borderRadius: 12,
-            fontSize: 15,
-            fontFamily: "inherit",
-            color: "#fff",
-            outline: "none",
-            appearance: "none",
-            cursor: "pointer",
-          };
-
           return (
             <div
               style={{
@@ -433,7 +433,6 @@
                 justifyContent: "center",
                 padding: "60px 36px 40px",
                 textAlign: "center",
-                background: "#000",
               }}
             >
               {error && (
@@ -446,14 +445,7 @@
                     </p>
                   </FadeIn>
                   <FadeIn delay={200}>
-                    <Btn
-                      onClick={() => window.location.reload()}
-                      style={{
-                        maxWidth: 280,
-                        background: "#fff",
-                        color: "#000",
-                      }}
-                    >
+                    <Btn onClick={() => window.location.reload()}>
                       Try again
                     </Btn>
                   </FadeIn>
@@ -467,7 +459,7 @@
                         width: 40,
                         height: 40,
                         borderRadius: "50%",
-                        border: "2px solid rgba(255,255,255,0.5)",
+                        border: "2px solid " + D.accent,
                         borderTopColor: "transparent",
                         animation: "spin 1s linear infinite",
                         margin: "0 auto 24px",
@@ -480,27 +472,27 @@
                       style={{
                         fontSize: 15,
                         fontWeight: 300,
-                        color: "rgba(255,255,255,0.5)",
+                        color: D.sub,
                         marginBottom: 40,
                       }}
                     >
                       Almost ready...
                     </p>
                   </FadeIn>
-                  <FadeIn delay={600} style={{ width: "100%", maxWidth: 300 }}>
+                  <FadeIn delay={600} style={{ width: "100%", maxWidth: 320 }}>
                     <div
                       style={{
                         display: "flex",
                         flexDirection: "column",
-                        gap: 14,
+                        gap: 16,
                         textAlign: "left",
                       }}
                     >
                       <div>
                         <div
                           style={{
-                            fontSize: 11,
-                            color: "rgba(255,255,255,0.4)",
+                            fontSize: 12,
+                            color: D.sub,
                             marginBottom: 6,
                             letterSpacing: ".05em",
                             textTransform: "uppercase",
@@ -525,8 +517,8 @@
                       <div>
                         <div
                           style={{
-                            fontSize: 11,
-                            color: "rgba(255,255,255,0.4)",
+                            fontSize: 12,
+                            color: D.sub,
                             marginBottom: 6,
                             letterSpacing: ".05em",
                             textTransform: "uppercase",
@@ -549,8 +541,8 @@
                       <div>
                         <div
                           style={{
-                            fontSize: 11,
-                            color: "rgba(255,255,255,0.4)",
+                            fontSize: 12,
+                            color: D.sub,
                             marginBottom: 6,
                             letterSpacing: ".05em",
                             textTransform: "uppercase",
@@ -581,32 +573,53 @@
               )}
               {!error && audioReady && (
                 <>
-                  <FadeIn delay={300}>
-                    <p
+                  <FadeIn delay={0}>
+                    <div
                       style={{
-                        fontSize: 18,
-                        fontWeight: 300,
-                        color: "rgba(255,255,255,0.8)",
-                        marginBottom: 16,
-                        lineHeight: 1.6,
+                        width: 64,
+                        height: 64,
+                        borderRadius: "50%",
+                        background:
+                          "linear-gradient(145deg," +
+                          D.accent +
+                          "30," +
+                          D.warm +
+                          "20)",
+                        border: "1px solid " + D.accentGlow,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        margin: "0 auto 24px",
+                        fontSize: 28,
                       }}
                     >
-                      Your experience is ready.
-                    </p>
+                      &#10003;
+                    </div>
+                  </FadeIn>
+                  <FadeIn delay={300}>
+                    <h2
+                      style={{
+                        fontSize: 22,
+                        fontWeight: 300,
+                        color: D.text,
+                        marginBottom: 12,
+                      }}
+                    >
+                      Your experience is ready
+                    </h2>
                     <p
                       style={{
                         fontSize: 14,
-                        fontWeight: 300,
-                        color: "rgba(255,255,255,0.35)",
-                        marginBottom: 12,
-                        lineHeight: 1.6,
-                        maxWidth: 280,
+                        fontWeight: 400,
+                        lineHeight: 1.7,
+                        color: D.sub,
+                        maxWidth: 300,
                         margin: "0 auto 12px",
                       }}
                     >
                       Put on headphones. When you feel a chill &ndash; a shiver,
                       goosebumps, a tingle &ndash;{" "}
-                      <span style={{ color: "rgba(255,255,255,0.7)" }}>
+                      <span style={{ color: D.text, fontWeight: 500 }}>
                         tap the screen
                       </span>
                       .
@@ -614,13 +627,13 @@
                   </FadeIn>
                   <FadeIn
                     delay={600}
-                    style={{ width: "100%", maxWidth: 300, marginTop: 20 }}
+                    style={{ width: "100%", maxWidth: 320, marginTop: 20 }}
                   >
                     <div
                       style={{
                         display: "flex",
                         flexDirection: "column",
-                        gap: 14,
+                        gap: 16,
                         textAlign: "left",
                         marginBottom: 30,
                       }}
@@ -628,8 +641,8 @@
                       <div>
                         <div
                           style={{
-                            fontSize: 11,
-                            color: "rgba(255,255,255,0.4)",
+                            fontSize: 12,
+                            color: D.sub,
                             marginBottom: 6,
                             letterSpacing: ".05em",
                             textTransform: "uppercase",
@@ -654,8 +667,8 @@
                       <div>
                         <div
                           style={{
-                            fontSize: 11,
-                            color: "rgba(255,255,255,0.4)",
+                            fontSize: 12,
+                            color: D.sub,
                             marginBottom: 6,
                             letterSpacing: ".05em",
                             textTransform: "uppercase",
@@ -678,8 +691,8 @@
                       <div>
                         <div
                           style={{
-                            fontSize: 11,
-                            color: "rgba(255,255,255,0.4)",
+                            fontSize: 12,
+                            color: D.sub,
                             marginBottom: 6,
                             letterSpacing: ".05em",
                             textTransform: "uppercase",
@@ -710,11 +723,7 @@
                     <Btn
                       green
                       onClick={handleContinue}
-                      style={{
-                        maxWidth: 280,
-                        background: "#fff",
-                        color: "#000",
-                      }}
+                      style={{ maxWidth: 300 }}
                     >
                       Start listening
                     </Btn>
@@ -756,7 +765,6 @@
               justifyContent: "center",
               padding: "60px 36px 40px",
               textAlign: "center",
-              background: "#000",
             }}
           >
             <FadeIn delay={200}>
@@ -766,7 +774,7 @@
                   fontWeight: 500,
                   letterSpacing: ".15em",
                   textTransform: "uppercase",
-                  color: "rgba(255,255,255,0.3)",
+                  color: D.hint,
                   marginBottom: 50,
                 }}
               >
@@ -790,7 +798,7 @@
                   transform: "translate(-50%, -50%)",
                   fontSize: 48,
                   fontWeight: 200,
-                  color: "rgba(255,255,255,0.9)",
+                  color: D.text,
                 }}
               >
                 {countdown}
@@ -804,7 +812,7 @@
                   transform: "translate(-50%, -50%)",
                   width: boxSize,
                   height: boxSize,
-                  border: "1px solid rgba(255,255,255,0.15)",
+                  border: "1px solid rgba(0,0,0,0.12)",
                   borderRadius: 4,
                 }}
               />
@@ -817,8 +825,8 @@
                   width: 12,
                   height: 12,
                   borderRadius: "50%",
-                  background: "rgba(255,255,255,0.9)",
-                  boxShadow: "0 0 20px rgba(255,255,255,0.4)",
+                  background: D.accent,
+                  boxShadow: "0 0 16px rgba(0,0,0,0.15)",
                   transition: "top 0.1s linear, left 0.1s linear",
                 }}
               />
@@ -832,10 +840,7 @@
                   fontSize: 12,
                   fontWeight: 400,
                   letterSpacing: ".08em",
-                  color:
-                    phaseIndex === 0
-                      ? "rgba(255,255,255,0.9)"
-                      : "rgba(255,255,255,0.25)",
+                  color: phaseIndex === 0 ? D.text : D.hint,
                   transition: "color 0.3s",
                 }}
               >
@@ -850,10 +855,7 @@
                   fontSize: 12,
                   fontWeight: 400,
                   letterSpacing: ".08em",
-                  color:
-                    phaseIndex === 1
-                      ? "rgba(255,255,255,0.9)"
-                      : "rgba(255,255,255,0.25)",
+                  color: phaseIndex === 1 ? D.text : D.hint,
                   transition: "color 0.3s",
                 }}
               >
@@ -868,10 +870,7 @@
                   fontSize: 12,
                   fontWeight: 400,
                   letterSpacing: ".08em",
-                  color:
-                    phaseIndex === 2
-                      ? "rgba(255,255,255,0.9)"
-                      : "rgba(255,255,255,0.25)",
+                  color: phaseIndex === 2 ? D.text : D.hint,
                   transition: "color 0.3s",
                 }}
               >
@@ -886,10 +885,7 @@
                   fontSize: 12,
                   fontWeight: 400,
                   letterSpacing: ".08em",
-                  color:
-                    phaseIndex === 3
-                      ? "rgba(255,255,255,0.9)"
-                      : "rgba(255,255,255,0.25)",
+                  color: phaseIndex === 3 ? D.text : D.hint,
                   transition: "color 0.3s",
                 }}
               >
@@ -901,7 +897,7 @@
               style={{
                 fontSize: 13,
                 fontWeight: 300,
-                color: "rgba(255,255,255,0.3)",
+                color: D.hint,
                 marginBottom: 30,
               }}
             >
@@ -912,7 +908,7 @@
               style={{
                 width: 200,
                 height: 2,
-                background: "rgba(255,255,255,0.08)",
+                background: "rgba(0,0,0,0.06)",
                 borderRadius: 1,
                 overflow: "hidden",
                 marginBottom: 40,
@@ -922,7 +918,7 @@
                 style={{
                   width: `${progress * 100}%`,
                   height: "100%",
-                  background: "rgba(255,255,255,0.3)",
+                  background: "rgba(0,0,0,0.2)",
                   transition: "width 0.1s linear",
                 }}
               />
@@ -934,7 +930,7 @@
                 style={{
                   background: "none",
                   border: "none",
-                  color: "rgba(255,255,255,0.25)",
+                  color: D.hint,
                   fontSize: 13,
                   fontFamily: "inherit",
                   cursor: "pointer",
